@@ -1,8 +1,8 @@
--- JJS - Yuji Auto Black Flash Script
+-- JJS - Yuji Auto Black Flash (Pure Timing Mode)
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
 -- Load thư viện Fluent UI
@@ -10,9 +10,9 @@ local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/
 
 local Window = Fluent:CreateWindow({
     Title = "Yuji Auto Black Flash | JJS",
-    SubTitle = "⚡ Precision Timing",
+    SubTitle = "⚡ Pure Timing Mode",
     TabWidth = 160,
-    Size = UDim2.fromOffset(480, 340),
+    Size = UDim2.fromOffset(480, 360),
     Acrylic = true,
     Theme = "Dark",
     MinimizeKey = Enum.KeyCode.RightControl
@@ -22,12 +22,14 @@ local Tabs = {
     Main = Window:AddTab({ Title = "Combat", Icon = "zap" })
 }
 
--- Biến trạng thái Auto Black Flash
+-- Biến trạng thái và cấu hình Timing
 local autoBlackFlashActive = false
+local timingDelay = 0.38 -- Bạn có thể tăng/giảm số này (tính bằng giây) để chỉnh thời gian nổ Black Flash chuẩn nhất
+local isExecuting = false
 
 Tabs.Main:AddParagraph({
-    Title = "Yuji Auto Black Flash",
-    Content = "Tự động canh đúng nhịp cửa sổ thời gian để bồi phím 3 kích hoạt Black Flash (Hớp Đen) chuẩn xác."
+    Title = "Auto Black Flash (Pure Timing)",
+    Content = "Mỗi khi bạn bấm phím 3, hệ thống sẽ tự động đếm chuẩn thời gian (Timing) để bồi nhịp 2 ra Black Flash."
 })
 
 -- Toggle Bật/Tắt Auto Black Flash
@@ -37,10 +39,23 @@ Tabs.Main:AddToggle("AutoBlackFlashToggle", {
     Callback = function(Value)
         autoBlackFlashActive = Value
         if Value then
-            Fluent:Notify({ Title = "Black Flash", Content = "Đã BẬT Auto Black Flash!", Duration = 2 })
+            Fluent:Notify({ Title = "Black Flash", Content = "Đã BẬT cơ chế Pure Timing!", Duration = 2 })
         else
-            Fluent:Notify({ Title = "Black Flash", Content = "Đã TẮT Auto Black Flash!", Duration = 2 })
+            Fluent:Notify({ Title = "Black Flash", Content = "Đã TẮT cơ chế Timing!", Duration = 2 })
         end
+    end
+})
+
+-- Thanh trượt (Slider) tùy chỉnh độ trễ thời gian (Timing Delay) cho chuẩn xác
+Tabs.Main:AddSlider("TimingDelaySlider", {
+    Title = "Độ trễ Timing (Giây)",
+    Description = "Chỉnh thời gian chờ từ lúc bấm Skill 3 đến lúc nổ Black Flash",
+    Default = 0.38,
+    Min = 0.20,
+    Max = 0.70,
+    Rounding = 2,
+    Callback = function(Value)
+        timingDelay = Value
     end
 })
 
@@ -48,44 +63,35 @@ Tabs.Main:AddToggle("AutoBlackFlashToggle", {
 local function pressKey3()
     pcall(function()
         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Three, false, game)
-        task.wait(0.04)
+        task.wait(0.03)
         VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Three, false, game)
     end)
 end
 
--- Logic phát hiện hoạt ảnh Skill 3 và tự động chớp nhịp Black Flash
-task.spawn(function()
-    while true do
-        task.wait(0.05)
-        pcall(function()
-            if not autoBlackFlashActive then return end
-
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
-                local animator = char.Humanoid:FindFirstChildOfClass("Animator")
-                if animator then
-                    for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
-                        local animName = string.lower(track.Name)
-                        
-                        -- Nhận diện hoạt ảnh khi vừa tung Skill 3 (Divergent Fist)
-                        if string.find(animName, "divergent") or string.find(animName, "skill3") or string.find(animName, "punch") then
-                            -- Chờ đúng độ trễ đến thời điểm cửa sổ Black Flash mở ra để bồi đòn thứ 2
-                            task.wait(0.35) 
-                            if autoBlackFlashActive then
-                                pressKey3() -- Tự động bồi nhịp kích hoạt Black Flash
-                                task.wait(1.5) -- Khoảng cooldown ngắn tránh lặp lệnh dồn dập
-                            end
-                        end
-                    end
-                end
-            end
-        end)
+-- Lắng nghe sự kiện người chơi bấm phím 3 để kích hoạt bộ đếm Timing
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not autoBlackFlashActive or isExecuting then return end
+    
+    -- Nếu bạn nhấn phím '3' trên bàn phím
+    if input.KeyCode == Enum.KeyCode.Three then
+        isExecuting = true
+        
+        -- Chờ đúng khoảng thời gian (Timing) đã cài đặt
+        task.wait(timingDelay)
+        
+        if autoBlackFlashActive then
+            pressKey3() -- Tự động bồi nhịp kích hoạt Black Flash
+        end
+        
+        -- Cooldown ngắn để tránh xung đột lệnh
+        task.wait(0.5)
+        isExecuting = false
     end
 end)
 
 Window:SelectTab(1)
 Fluent:Notify({
     Title = "Thành công",
-    Content = "Đã tải xong script Auto Black Flash!",
+    Content = "Đã tải xong script Pure Timing Black Flash!",
     Duration = 3
 })
