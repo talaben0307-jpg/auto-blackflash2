@@ -1,0 +1,91 @@
+-- JJS - Yuji Auto Black Flash Script
+local Players = game:GetService("Players")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
+
+-- Load thư viện Fluent UI
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+
+local Window = Fluent:CreateWindow({
+    Title = "Yuji Auto Black Flash | JJS",
+    SubTitle = "⚡ Precision Timing",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(480, 340),
+    Acrylic = true,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.RightControl
+})
+
+local Tabs = {
+    Main = Window:AddTab({ Title = "Combat", Icon = "zap" })
+}
+
+-- Biến trạng thái Auto Black Flash
+local autoBlackFlashActive = false
+
+Tabs.Main:AddParagraph({
+    Title = "Yuji Auto Black Flash",
+    Content = "Tự động canh đúng nhịp cửa sổ thời gian để bồi phím 3 kích hoạt Black Flash (Hớp Đen) chuẩn xác."
+})
+
+-- Toggle Bật/Tắt Auto Black Flash
+Tabs.Main:AddToggle("AutoBlackFlashToggle", {
+    Title = "Bật/Tắt Auto Black Flash",
+    Default = false,
+    Callback = function(Value)
+        autoBlackFlashActive = Value
+        if Value then
+            Fluent:Notify({ Title = "Black Flash", Content = "Đã BẬT Auto Black Flash!", Duration = 2 })
+        else
+            Fluent:Notify({ Title = "Black Flash", Content = "Đã TẮT Auto Black Flash!", Duration = 2 })
+        end
+    end
+})
+
+-- Hàm giả lập bấm phím 3
+local function pressKey3()
+    pcall(function()
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Three, false, game)
+        task.wait(0.04)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Three, false, game)
+    end)
+end
+
+-- Logic phát hiện hoạt ảnh Skill 3 và tự động chớp nhịp Black Flash
+task.spawn(function()
+    while true do
+        task.wait(0.05)
+        pcall(function()
+            if not autoBlackFlashActive then return end
+
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
+                local animator = char.Humanoid:FindFirstChildOfClass("Animator")
+                if animator then
+                    for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+                        local animName = string.lower(track.Name)
+                        
+                        -- Nhận diện hoạt ảnh khi vừa tung Skill 3 (Divergent Fist)
+                        if string.find(animName, "divergent") or string.find(animName, "skill3") or string.find(animName, "punch") then
+                            -- Chờ đúng độ trễ đến thời điểm cửa sổ Black Flash mở ra để bồi đòn thứ 2
+                            task.wait(0.35) 
+                            if autoBlackFlashActive then
+                                pressKey3() -- Tự động bồi nhịp kích hoạt Black Flash
+                                task.wait(1.5) -- Khoảng cooldown ngắn tránh lặp lệnh dồn dập
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+Window:SelectTab(1)
+Fluent:Notify({
+    Title = "Thành công",
+    Content = "Đã tải xong script Auto Black Flash!",
+    Duration = 3
+})
